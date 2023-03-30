@@ -1,0 +1,69 @@
+name: Unity CI
+on:
+  # Works when push to main branch
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # Unity Editor path on build PC
+  UNITY_APP_PATH: /Applications/Unity/Hub/Editor/2020.3.25f1/Unity.app/Contents/MacOS/Unity
+
+  # Repository name that must same with project folder name
+  REPO_NAME: UnityCICDProject
+
+  # Binary path
+  BUILD_PATH: ./UnityCICDProject/Build
+
+jobs:
+  Checkout:
+    # Runs when last commit doesn't include 'ci skip'
+    if: "!contains(github.event.head_commit.message, 'ci skip')"
+
+    # Set label of the self runner
+    runs-on: [ self-hosted, build-pc ]
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2.4.0
+        with:
+          token: ${{ secrets.GIT_ACCESS_TOKEN }}
+          path: ${{ env.REPO_NAME }}
+          clean: false
+          lfs: true
+          submodules: recursive
+
+  Android_Build:
+    # Runs when last commit includes build_aos or build_all
+    if: contains(github.event.head_commit.message, 'build_aos') || contains(github.event.head_commit.message, 'build_all')
+    needs: Checkout
+
+    # Set label of the self runner
+    runs-on: [ self-hosted, build-pc ]
+    env:
+      # TODO: remove this
+      AND_SETTING_PATH: ./UnityCICDProject/BuildInfo/finishversionsetting.txt
+
+    steps:
+      - name: Refresh build files
+        run: |
+          rm -rf $BUILD_PATH
+          rm -f $AND_SETTING_PATH
+          mkdir -p $BUILD_PATH
+        # You can download apk with aab in Appcenter
+      - name: Unity build
+        run: |
+          $UNITY_APP_PATH -logFile $BUILD_PATH/AndroidBuildLog.txt -buildTarget Android -projectPath $GITHUB_WORKSPACE/$REPO_NAME -executeMethod BuildScript.BuildAOSAAB
+  
+  Deploy_AppCenter:
+    needs: [Checkout, Android_Build]
+    runs-on: [ self-hosted, build-pc ]
+    steps:
+      - name: Output path
+        run: |
+          output=$(find $GITHUB_WORKSPACE/$REPO_NAME/Build/AOS -name "*.aab")
+          echo $output
+          echo "aabpath=$output" >> $GITHUB_ENV
+      - name: Upload output to AppCenter
+        working-directory: ${{ env.REPO_NAME }}
+        # Insert appname on Appcenter of your app in app_name
+        run: fastlane upload_aab file:"${{ env.aabpath }}" api_token:"${{ secrets.APP_CENTER_TOKEN }}" app_name:"UnityCICDProject" release_notes:"${{ github.event.comment.body }}"
