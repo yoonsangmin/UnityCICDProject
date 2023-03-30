@@ -66,5 +66,4 @@ jobs:
       - name: Upload output to AppCenter
         working-directory: ${{ env.REPO_NAME }}
         # Insert appname on Appcenter of your app in app_name
-        run: |
-        fastlane upload_aab file:"${{ env.aabpath }}" api_token:"${{ secrets.APP_CENTER_TOKEN }}" app_name:"UnityCICDProject" release_notes:"${{ github.event.comment.body }}"
+        run: fastlane upload_aab file:"${{ env.aabpath }}" api_token:"${{ secrets.APP_CENTER_TOKEN }}" app_name:"UnityCICDProject" release_notes:"${{ github.event.comment.body }}"
