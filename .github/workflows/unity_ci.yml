@@ -24,7 +24,7 @@ jobs:
     runs-on: [ self-hosted, build-pc ]
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3.5.0
         with:
           token: ${{ secrets.GIT_ACCESS_TOKEN }}
           path: ${{ env.REPO_NAME }}
